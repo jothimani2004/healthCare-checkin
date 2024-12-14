@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/healthCare-checkin/static/css/main.c49f1405.css",
+    "main.js": "/healthCare-checkin/static/js/main.651852ac.js",
+    "index.html": "/healthCare-checkin/index.html",
+    "main.c49f1405.css.map": "/healthCare-checkin/static/css/main.c49f1405.css.map",
+    "main.651852ac.js.map": "/healthCare-checkin/static/js/main.651852ac.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.c49f1405.css",
+    "static/js/main.651852ac.js"
+  ]
+}
