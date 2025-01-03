@@ -145,7 +145,7 @@ const Login = () => {
         {error && <p className="text-red-500 mt-4">{error}</p>}
         <p className="mt-4 text-center text-gray-600">
           Don't have an account?{' '}
-          <a href="/register" className="text-blue-500 hover:underline">
+          <a href="/#/register" className="text-blue-500 hover:underline">
             Register
           </a>
         </p>
@@ -153,7 +153,7 @@ const Login = () => {
         {/* Forgot Password Link */}
         <div className="text-center mt-4">
           <a
-            href="#"
+            
             onClick={() => setShowForgotPasswordModal(true)}
             className="text-blue-500 hover:underline"
           >

@@ -3,7 +3,7 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
-const { MongoClient } = require("mongodb");
+const { MongoClient, ServerApiVersion  } = require("mongodb");
 const nodemailer = require('nodemailer');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
@@ -11,19 +11,51 @@ require('dotenv').config();
 
 
 // MongoDB connection URI and Database Name
-const uri = "mongodb://localhost:27017"; // Replace with your URI if using a remote database
-const dbserver = new MongoClient(uri);
-const dbName = "mental_health_checkin";
-dbserver.connect();
-const db = dbserver.db(dbName);
+const uri = process.env.DB_URI;
 
+// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  }
+});
+async function run() {
+  try {
+    // Connect the client to the server (starting from MongoDB v4.7, this is optional)
+    await client.connect();
+
+    // Test the connection by pinging the database
+    const db1 = client.db("mental_health_checkin");
+    const result = await db.command({ ping: 1 });
+    console.log("Ping successful:", result);
+
+    console.log("Successfully connected to MongoDB!");
+
+    return db; // Return the database instance for further use
+  } catch (error) {
+    console.error("Failed to connect to MongoDB:", error);
+    process.exit(1); // Exit the process with a failure code
+  }
+}
+
+// Run the connection test
+let db1;
+run()
+  .then((database) => {
+    db = database; // Assign the database instance globally for use in routes or other operations
+  })
+  .catch(console.dir);
+
+const db = client.db("mental_health_checkin");
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-const fromemail="jothimani88531@gmail.com";
-const passemail="gfty gdky qawp pycq";
+const PORT = process.env.PORT;
+const fromemail=process.env.FROM_EMAIL;
+const passemail=process.env.EMAIL_PASSWORD;
 // Secret key for JWT
-const SECRET_KEY = 'your_secret_key';
+const SECRET_KEY = process.env.SECRET_KEY;
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -106,8 +138,6 @@ app.get('/get-username', async(req, res) => {
       } else {
         return res.status(400).json({ message: 'Invalid email format' });
       }
-
-
 
     } catch (error) {
       res.status(401).json({ message: 'Token is invalid or expired' });
@@ -250,7 +280,7 @@ app.post('/forgot-password',sanitizeInput, async (req, res) => {
     return res.status(404).json({ message: 'User not found' });
   }
   const token = jwt.sign({ email }, SECRET_KEY, { expiresIn: '5m' });
-  const resetUrl = `http://localhost:3000/reset-password?token=${token}`;
+  const resetUrl = `http://localhost:3000/#reset-password?token=${token}`;
   // Send email with reset link
   const mailOptions = {
     from: fromemail,
@@ -270,6 +300,7 @@ app.post('/forgot-password',sanitizeInput, async (req, res) => {
 // Reset Password Endpoint
 app.post('/reset-password', async (req, res) => {
   const { token, password } = req.body;
+  console.log(token, password);
 
   if (!token || !password ) {
     return res.status(400).send({ message: 'Token and new password are required' });

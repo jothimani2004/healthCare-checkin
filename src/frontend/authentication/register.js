@@ -29,7 +29,7 @@ const handleSubmit = async (e) => {
     });
     
     if (response.status === 201) {
-      navigate('/login'); // Trigger redirect
+      navigate('/#/login'); // Trigger redirect
     }
   } catch (err) {
     const errorMessage = err.response?.data?.error || 'Invalid username or password';
@@ -105,7 +105,7 @@ const handleSubmit = async (e) => {
         </form>
         <p className="mt-4 text-center text-gray-600">
           Already have an account?{' '}
-          <a href="/login" className="text-blue-500 hover:underline">
+          <a href="/#/login" className="text-blue-500 hover:underline">
             Login
           </a>
         </p>
