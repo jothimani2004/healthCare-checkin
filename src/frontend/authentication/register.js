@@ -29,7 +29,7 @@ const handleSubmit = async (e) => {
     });
     
     if (response.status === 201) {
-      navigate('/#/login'); // Trigger redirect
+      navigate('/login'); // Trigger redirect
     }
   } catch (err) {
     const errorMessage = err.response?.data?.error || 'Invalid username or password';
