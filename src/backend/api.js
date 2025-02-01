@@ -7,7 +7,8 @@ const { MongoClient, ServerApiVersion  } = require("mongodb");
 const nodemailer = require('nodemailer');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
-
+const { ObjectId } = require('mongodb');  // Import ObjectId
+const axios = require('axios');
 
 
 // MongoDB connection URI and Database Name
@@ -67,7 +68,7 @@ const transporter = nodemailer.createTransport({
 // Middleware
 const corsOptions = {
   origin: 'http://localhost:3000', // Frontend URL (adjust if different)
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed methods
+  methods : ['GET', 'POST', 'PUT', 'DELETE'], // Allowed methods
   credentials: true, // Allow cookies to be sent
 };
 
@@ -107,7 +108,7 @@ const authMiddleware = (req, res, next) => {
   }
 
   try {
-    const payload = jwt.verify(token, SECRET_KEY);
+    const payloaFd = jwt.verify(token, SECRET_KEY);
     req.user = payload;
      // Attach user data to the request object
      console.log(req.user);
@@ -195,10 +196,34 @@ app.post('/register', sanitizeInput, async (req, res) => {
 
 
 
-// Login endpoint
+// Login endpointconst axios = require('axios');
+
 app.post('/login', sanitizeInput, async (req, res) => {
-  const { loginInput, password } = req.body;
+  const { loginInput, password, recaptchaToken } = req.body;  // Capture the reCAPTCHA token sent from the frontend
   console.log(loginInput, password);
+
+  // Verify reCAPTCHA token with Google
+  const recaptchaSecretKey = '6LdTp8kqAAAAAE8f9TB2I3lob2Y9GqySQ_E-JA7Z'; // Replace with your secret key
+
+  try {
+    const recaptchaResponse = await axios.post(
+      `https://www.google.com/recaptcha/api/siteverify`,
+      null,
+      {
+        params: {
+          secret: recaptchaSecretKey,
+          response: recaptchaToken, // The token you sent from the frontend
+        },
+      }
+    );
+
+    if (!recaptchaResponse.data.success) {
+      return res.status(400).send({ message: 'reCAPTCHA verification failed' });
+    }
+  } catch (error) {
+    console.error('Error verifying reCAPTCHA:', error);
+    return res.status(500).send({ message: 'Error during reCAPTCHA verification' });
+  }
 
   const isEmail = validator.isEmail(loginInput); // Check if the input is an email
   const query = isEmail ? { email: loginInput } : { username: loginInput };
@@ -216,7 +241,6 @@ app.post('/login', sanitizeInput, async (req, res) => {
   const currentTime = new Date().getTime();
 
   if (user.failedAttempts >= 5) {
-    
     if (currentTime - user.lastFailedAttempt < lockDuration) {
       return res.status(403).send({ message: 'Account locked. Please try again later or reset your password.' });
     } else {
@@ -231,14 +255,20 @@ app.post('/login', sanitizeInput, async (req, res) => {
   // Compare the password with the hashed password stored in the database
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
-    await db.collection('users').updateOne(
+    // Increment failed attempts and set the last failed attempt time
+    const result = await db.collection('users').updateOne(
       { _id: user._id },
       {
         $inc: { failedAttempts: 1 },
         $set: { lastFailedAttempt: currentTime }
-      }
+      },
+      { returnDocument: 'after' } // Return the updated document
     );
-    return res.status(401).send({ message: 'Invalid credentials' });
+    const updatedUser = await db.collection('users').findOne({ _id: new ObjectId(user._id) });
+    return res.status(401).send({
+      message: 'Wrong password',
+      failedAttempts: updatedUser.failedAttempts, // Send the updated failed attempts count
+    });
   }
 
   // Reset failed attempts if login is successful

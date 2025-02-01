@@ -21,7 +21,7 @@ const Navbar = () => {
 
       if (response.status===200) {
        
-        navigate("/#/login"); // Redirect to the login page
+        navigate("/login"); // Redirect to the login page
       } else {
         alert("Failed to log out. Please try again.");
       }

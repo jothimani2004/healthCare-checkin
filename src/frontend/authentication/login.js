@@ -1,10 +1,11 @@
-import React from 'react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 const Login = () => {
-  const [loginInput, setloginInput] = useState('');
+  const [failedAttempts, setFailedAttempts] = useState(null);
+  const [loginInput, setLoginInput] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -12,49 +13,60 @@ const Login = () => {
   const [emailForReset, setEmailForReset] = useState('');
   const [loading, setLoading] = useState(false);
   const [resetLinkSent, setResetLinkSent] = useState(false);
-  const [accountLocked, setAccountLocked] = useState(false); // Track if the account is locked
+  const [accountLocked, setAccountLocked] = useState(false); 
+  const [recaptchaValue, setRecaptchaValue] = useState(null); // State to hold reCAPTCHA response
+
   const navigate = useNavigate();
 
   const togglePasswordVisibility = () => {
     setShowPassword((prev) => !prev);
   };
 
+  const handleRecaptchaChange = (value) => {
+    console.log(value);
+    
+    setRecaptchaValue(value); // Set reCAPTCHA value
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!recaptchaValue) {
+      setError('Please verify that you are not a robot');
+      return;
+    }
 
     try {
       const response = await axios.post(
         'http://localhost:5000/login',
-        { loginInput, password },
+        { loginInput, password, recaptchaToken: recaptchaValue }, // Send reCAPTCHA token to backend
         { withCredentials: true }
       );
 
       if (response.status === 200) {
         console.log('Login successful');
+        setFailedAttempts(0);
         navigate('/mentalhealthcheckin');
       }
     } catch (err) {
       if (err.response?.data?.message === 'Account locked. Please try again later or reset your password.') {
-        setAccountLocked(true); // Show lockout modal
+        setAccountLocked(true);
       } else {
         setError(err.response?.data?.message || 'Invalid username or password');
+        setFailedAttempts(err.response?.data?.failedAttempts || 0);
       }
     }
   };
 
   const handleForgotPasswordClick = () => {
-   
-    // Reset the account locked state before opening the modal
     setAccountLocked(false);
     setShowForgotPasswordModal(true);
-  
   };
-
 
   const handleForgotPasswordSubmit = async (e) => {
     e.preventDefault();
 
-    setLoading(true); // Start loading
+    setLoading(true);
 
     try {
       const response = await axios.post('http://localhost:5000/forgot-password', { email: emailForReset });
@@ -83,7 +95,7 @@ const Login = () => {
               type="text"
               id="loginInput"
               value={loginInput}
-              onChange={(e) => setloginInput(e.target.value.trim())}
+              onChange={(e) => setLoginInput(e.target.value.trim())}
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="Enter your username or email"
@@ -112,48 +124,55 @@ const Login = () => {
               </button>
             </div>
           </div>
-          <button
-  type="submit"
-  className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-300"
-  disabled={loading} // Disable the button when loading is true
->
-  {loading ? (
-    <span className="flex justify-center items-center">
-      <svg
-        className="w-5 h-5 animate-spin"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <circle cx="12" cy="12" r="10" stroke="gray" strokeWidth="4" />
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-          d="M4 12a8 8 0 0116 0"
-        />
-      </svg>
-      <span className="ml-2">Logging In...</span>
-    </span>
-  ) : (
-    'Login'
-  )}
-</button>
 
+          {/* reCAPTCHA Widget */}
+          <div className="mb-4">
+            <ReCAPTCHA
+              sitekey="6LdTp8kqAAAAAKD8Jp_RwnX2MKj9NptdGPj3nKWL"
+              onChange={handleRecaptchaChange}
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-300"
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="flex justify-center items-center">
+                <svg
+                  className="w-5 h-5 animate-spin"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <circle cx="12" cy="12" r="10" stroke="gray" strokeWidth="4" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M4 12a8 8 0 0116 0"
+                  />
+                </svg>
+                <span className="ml-2">Logging In...</span>
+              </span>
+            ) : (
+              'Login'
+            )}
+          </button>
         </form>
         {error && <p className="text-red-500 mt-4">{error}</p>}
-        <p className="mt-4 text-center text-gray-600">
-          Don't have an account?{' '}
-          <a href="/#/register" className="text-blue-500 hover:underline">
-            Register
-          </a>
-        </p>
+        {failedAttempts > 0 && (
+          <p style={{ color: 'red' }}>
+            Failed Attempts: {failedAttempts}.
+            <p>Your account will be locked after 5 unsuccessful login attempts</p>
+          </p>
+        )}
 
         {/* Forgot Password Link */}
         <div className="text-center mt-4">
           <a
-            
             onClick={() => setShowForgotPasswordModal(true)}
             className="text-blue-500 hover:underline"
           >
@@ -161,101 +180,6 @@ const Login = () => {
           </a>
         </div>
       </div>
-
-      {/* Forgot Password Modal */}
-      {showForgotPasswordModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-          <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Reset Password</h2>
-            <form onSubmit={handleForgotPasswordSubmit}>
-              <div className="mb-4">
-                <label className="block text-gray-600 font-medium mb-2" htmlFor="emailForReset">
-                  Enter your email address
-                </label>
-                <input
-                  type="email"
-                  id="emailForReset"
-                  value={emailForReset}
-                  onChange={(e) => setEmailForReset(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  placeholder="Enter your email"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-300"
-                disabled={loading}
-              >
-                {loading ? (
-                  <span className="flex justify-center items-center">
-                    <svg
-                      className="w-5 h-5 animate-spin"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <circle cx="12" cy="12" r="10" stroke="gray" strokeWidth="4" />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M4 12a8 8 0 0116 0"
-                      />
-                    </svg>
-                    <span className="ml-2">Sending...</span>
-                  </span>
-                ) : (
-                  'Send Reset Link'
-                )}
-              </button>
-            </form>
-
-            {resetLinkSent && (
-              <div className="mt-4 text-center text-green-500">
-                <p>The reset link has been sent to your email!</p>
-              </div>
-            )}
-
-            <div className="text-center mt-4">
-              <button
-                onClick={() => setShowForgotPasswordModal(false)}
-                className="text-blue-500 hover:underline"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Account Locked Modal */}
-      {accountLocked && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-          <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Account Locked</h2>
-            <p className="text-center text-gray-600 mb-4">
-              Your account has been locked due to too many failed login attempts. Please wait for 10 minutes or reset your password.
-            </p>
-            <div className="flex justify-center space-x-4">
-            <button
-   onClick={()=>handleForgotPasswordClick()}  
-  className="w-32 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-300"
->
-
-                Reset password
-              </button>
-              <button
-                onClick={() => setAccountLocked(false)}
-                className="w-32 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600 transition duration-300"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
