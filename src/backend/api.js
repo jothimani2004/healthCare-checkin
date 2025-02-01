@@ -69,8 +69,7 @@ const transporter = nodemailer.createTransport({
 const corsOptions = {
   origin: 'http://localhost:3000', // Frontend URL (adjust if different)
   methods : ['GET', 'POST', 'PUT', 'DELETE'], // Allowed methods
-  origin: 'http://localhost:3001', // Frontend URL (adjust if different)
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed methods
+ 
   credentials: true, // Allow cookies to be sent
 };
 
@@ -307,6 +306,8 @@ app.post('/logout', (req, res) => {
 //forget password
 app.post('/forgot-password',sanitizeInput, async (req, res) => {
   const { email } = req.body;
+  console.log(email);
+  
   const user = await db.collection("users").findOne({email:email});
   console.log(user);
   if (!user) {
