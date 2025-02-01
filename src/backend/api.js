@@ -69,6 +69,8 @@ const transporter = nodemailer.createTransport({
 const corsOptions = {
   origin: 'http://localhost:3000', // Frontend URL (adjust if different)
   methods : ['GET', 'POST', 'PUT', 'DELETE'], // Allowed methods
+  origin: 'http://localhost:3001', // Frontend URL (adjust if different)
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed methods
   credentials: true, // Allow cookies to be sent
 };
 
@@ -153,6 +155,7 @@ app.get('/get-username', async(req, res) => {
 app.post('/register', sanitizeInput, async (req, res) => {
   try {
     const { username, password, email } = req.body;
+    console.log(username, password, email);
 
     // Validate required fields
     if (!username || !password || !email) {
@@ -281,7 +284,7 @@ app.post('/login', sanitizeInput, async (req, res) => {
   const token = jwt.sign({ loginInput }, SECRET_KEY, { expiresIn: '1h' });
 
   // Send the token as the response
-  res.cookie('jwtToken', token, {
+  res.cookie('jwtToken',token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'Lax',
